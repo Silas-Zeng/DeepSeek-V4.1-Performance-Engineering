@@ -45,6 +45,13 @@ The latter is the only number that can support an end-to-end claim.
 
 ## Existing evidence and open boundaries
 
+- vLLM already exposes `SparseMQAIndexer` for candidate-consuming layers. It
+  gathers paged prefill K into a bounded workspace and calls sparse MQA-logits
+  kernels over candidate blocks on its supported backend. See the
+  [vLLM API documentation](https://docs.vllm.ai/en/latest/api/vllm/model_executor/layers/sparse_mqa_indexer/).
+- vLLM already has DeepSeek-V4.1 kernel tests and candidate/indexer gating
+  tests. The repository should reuse those tests and add only missing coverage
+  for a measured gap.
 - [vLLM #45663](https://github.com/vllm-project/vllm/issues/45663) reports a
   long-context sparse-indexer temporary-buffer OOM.
 - [vLLM #53563](https://github.com/vllm-project/vllm/issues/53563) proposes an
@@ -53,6 +60,11 @@ The latter is the only number that can support an end-to-end claim.
   claimed contribution of this repository.
 - Candidate filtering, paged KV and CUDA Graph metadata must be measured
   together. A standalone `topk` speedup is insufficient evidence.
+
+The remaining research question is therefore execution policy and coverage:
+when should vLLM use its dense, chunked or candidate-consuming path for a given
+context length, ragged batch and graph mode, and which unbounded workspace or
+metadata costs remain after the existing implementation is enabled?
 
 ## Instrumentation boundary
 

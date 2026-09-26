@@ -2,10 +2,11 @@
 
 ## Why start with vLLM
 
-The first implementation target is vLLM's DeepSeek sparse-indexer path. This
-keeps the initial work to one framework, one set of CUDA kernels and one
-correctness contract. SGLang becomes a controlled comparison once the vLLM
-baseline can be reproduced.
+The first implementation target is vLLM's DeepSeek sparse-indexer path. vLLM
+already contains the indexer, candidate-consuming MQA path, paged-KV mapping,
+and kernel-level correctness tests. This project must measure and extend those
+paths rather than reimplement them as a generic Top-K library. SGLang becomes a
+controlled comparison once the vLLM baseline can be reproduced.
 
 ## Scope boundary
 
@@ -21,16 +22,17 @@ precision, candidate semantics or the downstream sparse-attention equation.
 
 ## Baselines
 
-The benchmark should make three paths explicit:
+The benchmark should make three existing or experimentally composed paths explicit:
 
 - **dense**: score the full history and select Top-K;
 - **chunked**: bound the score workspace by processing history chunks;
 - **candidate-aware**: score only an existing candidate set and resolve its
   paged KV addresses.
 
-The candidate-aware path is only valid when it preserves the same candidate and
-selection semantics as the reference path. It must not be presented as an
-algorithmic quality change.
+The candidate-aware path is already implemented in vLLM for supported hardware
+through `SparseMQAIndexer`; the research task is to measure its complete cost
+and identify cases that still fall back to dense or chunked execution. It must
+not be presented as a new algorithmic selection method.
 
 ## First experiment matrix
 
@@ -64,8 +66,8 @@ changes launch and memory behavior.
 
 ## Correctness contract
 
-For fixed inputs and fixed candidates, compare the reference and optimized
-paths at each boundary:
+Reuse vLLM's existing DeepSeek-V4.1 indexer tests and compare any new path at
+each boundary:
 
 - selected indices and valid-length handling;
 - score error and tie behavior;
@@ -73,9 +75,9 @@ paths at each boundary:
 - sparse-attention input positions;
 - final logits on a small real-model case.
 
-Test empty candidates, fewer-than-K valid positions, page boundaries, duplicate
-candidate blocks, tied scores and repeated CUDA Graph replays with changed
-candidate contents.
+Add only missing cases discovered during profiling, such as ragged batches,
+candidate/page-table layout changes, and repeated CUDA Graph replays with
+changed metadata.
 
 ## Decision gate
 
@@ -86,4 +88,5 @@ that path instead.
 
 The first milestone is a reproducible vLLM baseline and a cost breakdown. It is
 successful even if the candidate-aware path does not win for every context
-length.
+length; an optimization is only justified when vLLM's existing paths leave a
+measured gap.

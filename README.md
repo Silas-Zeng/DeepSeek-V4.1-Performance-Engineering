@@ -3,7 +3,7 @@
 Performance research for DeepSeek-V4.1 sparse indexer execution on Hopper GPUs.
 
 The first phase focuses on the vLLM execution path. SGLang is kept as a later
-comparison point after the vLLM baseline and correctness harness are stable.
+comparison point after the vLLM baseline and cost breakdown are stable.
 
 ## Working title
 
@@ -31,10 +31,11 @@ is not treated as an end-to-end improvement until the full path is measured.
 ## Current scope: vLLM first
 
 - lock a vLLM commit and document the actual DeepSeek-V4.1/Hopper path;
-- build a small reference implementation for index and Top-K correctness;
-- reproduce dense, chunked and candidate-aware indexer baselines;
+- reuse vLLM's existing indexer and kernel correctness tests;
+- reproduce dense, chunked and candidate-aware paths that already exist in vLLM;
 - measure peak temporary memory, HBM traffic, kernel launches and latency;
-- only then evaluate fused scoring/Top-K or paged-KV address mapping changes.
+- only then evaluate an execution-policy or kernel change not already covered
+  by vLLM.
 
 SGLang comparison will be added after the vLLM path has a reproducible baseline.
 
@@ -43,15 +44,9 @@ SGLang comparison will be added after the vLLM path has a reproducible baseline.
 - [`docs/vllm-first-plan.md`](docs/vllm-first-plan.md): first-phase plan and boundaries
 - [`configs/vllm-baseline.yaml`](configs/vllm-baseline.yaml): version and experiment lock
 - [`benchmarks/README.md`](benchmarks/README.md): benchmark entry-point contract
-- [`src/sparse_indexer/reference.py`](src/sparse_indexer/reference.py): framework-independent reference semantics
-- [`tests/test_reference.py`](tests/test_reference.py): Top-K and paged-KV address correctness tests
-
-Run the current reference tests with:
-
-```powershell
-python -m unittest discover -s tests -v
-```
+- [`docs/existing-vllm-work.md`](docs/existing-vllm-work.md): existing vLLM work
+  and the remaining research gap
 
 ## Status
 
-Repository scaffold created. No performance claim has been made yet.
+Repository scaffold and scope correction created. No performance claim has been made yet.
