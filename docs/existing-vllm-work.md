@@ -7,7 +7,9 @@ algorithm. vLLM already has the relevant model path and tests.
 
 - `SparseAttnIndexer` provides the full-history score/mask path.
 - `SparseMQAIndexer` consumes candidate blocks and runs sparse MQA-logits
-  kernels on supported hardware.
+  kernels on supported hardware. Its current API contract requires an
+  SM100-class GPU and DeepGEMM sparse MQA support, so this is not evidence that
+  the same candidate-consuming path already works on Hopper/SM90.
 - The candidate-consuming path gathers paged prefill K into a bounded workspace,
   then selects Top-K inside the candidate blocks.
 - DeepSeek-V4.1 attention owns index-K cache setup, candidate buffers and the
@@ -25,11 +27,14 @@ References:
 
 1. **Path selection:** when vLLM uses dense, chunked or candidate-consuming
    execution as context length, batch shape and hardware change.
-2. **Remaining memory costs:** whether score workspaces, gathered K buffers or
+2. **Hopper gap:** determine whether an SM90 candidate-consuming path can reuse
+   existing semantics without depending on the SM100-only backend, or whether
+   a memory-bounded dense/chunked path is the correct Hopper baseline.
+3. **Remaining memory costs:** whether score workspaces, gathered K buffers or
    graph metadata still grow with the configured maximum rather than live work.
-3. **Ragged and graph coverage:** whether dynamic request lengths and CUDA Graph
+4. **Ragged and graph coverage:** whether dynamic request lengths and CUDA Graph
    replay preserve the same efficient path as uniform synthetic cases.
-4. **Complete cost:** whether candidate-only score savings are lost to gather,
+5. **Complete cost:** whether candidate-only score savings are lost to gather,
    page mapping, Top-K and launch overhead.
 
 Any proposed change must be compared against the existing vLLM implementation
