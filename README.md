@@ -43,6 +43,14 @@ SGLang comparison will be added after the vLLM path has a reproducible baseline.
 - [`docs/vllm-first-plan.md`](docs/vllm-first-plan.md): first-phase plan and boundaries
 - [`configs/vllm-baseline.yaml`](configs/vllm-baseline.yaml): version and experiment lock
 - [`benchmarks/README.md`](benchmarks/README.md): benchmark entry-point contract
+- [`src/sparse_indexer/reference.py`](src/sparse_indexer/reference.py): framework-independent reference semantics
+- [`tests/test_reference.py`](tests/test_reference.py): Top-K and paged-KV address correctness tests
+
+Run the current reference tests with:
+
+```powershell
+python -m unittest discover -s tests -v
+```
 
 ## Status
 
