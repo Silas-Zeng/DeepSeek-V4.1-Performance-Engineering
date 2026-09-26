@@ -1,0 +1,33 @@
+framework: vllm
+model: deepseek-ai/DeepSeek-V4.1-Flash
+hardware:
+  target: hopper
+  compute_capability: sm90
+  devices: [H100, H200]
+source:
+  repository: https://github.com/vllm-project/vllm
+  main_head_observed: 77871126f9b69cff9feffff390d1171a60dbd7e2
+  lock_before_benchmark: true
+experiment:
+  paths:
+    - dense
+    - chunked
+    - candidate_aware
+  history_lengths: [8192, 32768, 131072, 1048576]
+  query_rows: [1, 32, 512]
+  candidate_counts: [256, 1024, 4096, 16384]
+  top_k: [32, 64, 128, 512]
+  batch_sizes: [1, 2, 8]
+  execution_modes: [eager, cuda_graph]
+metrics:
+  - indexer_latency_ms
+  - peak_temporary_memory_bytes
+  - hbm_read_bytes
+  - hbm_write_bytes
+  - kernel_launches
+  - topk_exactness
+  - address_mapping_correctness
+notes:
+  - Synthetic benchmarks are component-level evidence only.
+  - Do not claim end-to-end model speedup without a real-model run.
+  - Record CUDA, driver, PyTorch and GPU clock information with every run.
