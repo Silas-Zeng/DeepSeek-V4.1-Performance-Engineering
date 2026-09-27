@@ -1,13 +1,18 @@
-# V4.1-Sparse-Indexer
+# DeepSeek-V4.1 Inference Performance Engineering
 
-Performance research for DeepSeek-V4.1 sparse indexer execution on Hopper GPUs.
+*Bottleneck Localization and Optimization Across vLLM and SGLang*
 
-The first phase focuses on the vLLM execution path. SGLang is kept as a later
-comparison point after the vLLM baseline and cost breakdown are stable.
+Measurement-driven performance engineering for DeepSeek-V4.1 inference. The
+sparse indexer is the initial case study, with vLLM and SGLang evaluated under
+matched workloads and hardware configurations.
 
-## Working title
+## Research focus
 
-**Memory-Bounded Sparse Indexer Execution for DeepSeek-V4.1 on Hopper GPUs: A Comparative Study of SGLang and vLLM**
+The project follows a complete performance loop:
+
+```text
+baseline -> bottleneck localization -> targeted optimization -> validation
+```
 
 ## Research question
 
@@ -28,16 +33,17 @@ The project will measure the complete indexer component, including workspace
 allocation, candidate gathering and index remapping. A faster isolated kernel
 is not treated as an end-to-end improvement until the full path is measured.
 
-## Current scope: vLLM first
+## Initial scope: sparse indexer across frameworks
 
-- lock a vLLM commit and document the actual DeepSeek-V4.1/Hopper path;
-- reuse vLLM's existing indexer and kernel correctness tests;
-- reproduce dense, chunked and candidate-aware paths that already exist in vLLM;
-- measure peak temporary memory, HBM traffic, kernel launches and latency;
-- only then evaluate an execution-policy or kernel change not already covered
-  by vLLM.
+- lock framework commits and document the actual DeepSeek-V4.1 execution paths;
+- align model configuration, precision, parallelism, workload shapes and hardware;
+- measure indexer, sparse MQA, Top-K, metadata and downstream attention stages;
+- localize compute, memory, launch, synchronization and communication bottlenecks;
+- apply one targeted optimization at a time and validate component and
+  end-to-end results.
 
-SGLang comparison will be added after the vLLM path has a reproducible baseline.
+Framework-specific capability differences will be recorded instead of being
+treated as performance regressions.
 
 ## Repository map
 
