@@ -2,12 +2,15 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.framework-env/
 dist/
 build/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
 reports/raw/
+reports/environment.json
+results/
 profiles/
 *.nsys-rep
 *.ncu-rep

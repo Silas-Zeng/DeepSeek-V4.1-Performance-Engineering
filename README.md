@@ -47,6 +47,10 @@ treated as performance regressions.
 
 ## Repository map
 
+- [`environment/README.md`](environment/README.md): local and GPU-host setup
+- [`environment/frameworks.md`](environment/frameworks.md): isolated vLLM and SGLang source environments
+- [`configs/framework-environments.yaml`](configs/framework-environments.yaml): framework commit lock
+- [`configs/workload-matrix.yaml`](configs/workload-matrix.yaml): matched workload contract
 - [`docs/vllm-first-plan.md`](docs/vllm-first-plan.md): first-phase plan and boundaries
 - [`configs/vllm-baseline.yaml`](configs/vllm-baseline.yaml): version and experiment lock
 - [`benchmarks/README.md`](benchmarks/README.md): benchmark entry-point contract

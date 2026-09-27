@@ -1,0 +1,5 @@
+# Lightweight host-side tools used by the benchmark and profiling helpers.
+# Frameworks, PyTorch, CUDA, FlashInfer and DeepGEMM are installed separately
+# in the Linux GPU environment that runs the actual model.
+psutil>=6.0,<8
+PyYAML>=6.0,<7

@@ -1,0 +1,26 @@
+model:
+  id: deepseek-ai/DeepSeek-V4.1-Flash
+  revision: record-before-run
+
+# Keep one environment per framework. Do not install vLLM and SGLang into the
+# same Python environment when collecting performance numbers.
+frameworks:
+  vllm:
+    repository: https://github.com/vllm-project/vllm.git
+    ref: record-before-run
+    source_dir: .framework-env/src/vllm
+    environment_dir: .framework-env/venvs/vllm
+    install_mode: source
+  sglang:
+    repository: https://github.com/sgl-project/sglang.git
+    ref: record-before-run
+    source_dir: .framework-env/src/sglang
+    environment_dir: .framework-env/venvs/sglang
+    install_mode: source
+
+hardware:
+  gpu: record-before-run
+  compute_capability: record-before-run
+  driver: record-before-run
+  cuda: record-before-run
+  tensor_parallel_size: record-before-run

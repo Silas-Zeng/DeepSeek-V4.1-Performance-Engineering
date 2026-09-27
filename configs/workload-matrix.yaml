@@ -1,0 +1,51 @@
+model:
+  id: deepseek-ai/DeepSeek-V4.1-Flash
+  revision: record-before-run
+  indexer_kv_dtype: mxfp4
+  kv_cache_dtype: fp8
+
+run_control:
+  warmup_iterations: 5
+  measured_iterations: 20
+  seed: 0
+  speculative_decoding: false
+  prefix_caching: false
+  cuda_graph: record-as-a-separate-mode
+
+# Start with one GPU SKU. Add another only after the first baseline is stable.
+hardware:
+  gpu: record-before-run
+  compute_capability: record-before-run
+  tensor_parallel_size: record-before-run
+
+workloads:
+  decode:
+    context_lengths: [8192, 32768, 131072]
+    batch_sizes: [1, 8, 32]
+    query_length: 1
+  prefill:
+    context_lengths: [8192, 32768, 131072]
+    batch_sizes: [1, 8]
+    query_lengths: [8, 512]
+
+frameworks:
+  vllm:
+    commit: record-before-run
+    backend: record-at-runtime
+  sglang:
+    commit: record-before-run
+    backend: record-at-runtime
+
+metrics:
+  - end_to_end_latency_ms
+  - ttft_ms
+  - tpot_ms
+  - throughput_tokens_per_second
+  - indexer_latency_ms
+  - sparse_mqa_latency_ms
+  - topk_latency_ms
+  - metadata_latency_ms
+  - peak_memory_bytes
+  - kernel_count
+  - gpu_idle_time_ms
+  - correctness
