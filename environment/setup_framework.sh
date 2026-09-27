@@ -32,7 +32,7 @@ uv venv --python 3.12 "$venv"
 if [[ "$framework" == "vllm" ]]; then
   uv pip install --python "$venv/bin/python" -e "$src" --torch-backend=auto
 else
-  uv pip install --python "$venv/bin/python" -e "$src"
+  uv pip install --python "$venv/bin/python" --prerelease=allow -e "$src"
 fi
 
 "$venv/bin/python" "$repo_root/scripts/collect_environment.py" \

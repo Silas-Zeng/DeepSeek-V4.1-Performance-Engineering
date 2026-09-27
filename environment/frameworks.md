@@ -18,7 +18,10 @@ The current local machine is Windows with an RTX 3050 Ti. It cannot run the
 DeepSeek-V4.1 production path, so run these commands on the target Linux GPU
 host. vLLM's official installation guide supports source installation with
 `uv pip install -e . --torch-backend=auto`; SGLang should be installed from
-its source checkout for a pinned benchmark commit.
+its source checkout for a pinned benchmark commit. See the [vLLM GPU
+installation guide](https://docs.vllm.ai/en/latest/getting_started/installation/gpu/)
+and the [SGLang DeepSeek-V4.1 cookbook](https://docs.sglang.ai/basic_usage/deepseek_v4_1.html)
+for hardware-specific prerequisites and launch flags.
 
 First record the host and choose commits:
 
