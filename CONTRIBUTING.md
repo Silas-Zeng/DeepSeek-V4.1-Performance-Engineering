@@ -15,8 +15,10 @@ python benchmarks/indexer_benchmark.py --output results/indexer-benchmark.json
 
 The benchmark must report matching dense and chunked Top-K positions before its
 timings are useful. Use `--device cuda` only on a host with a compatible CUDA
-installation. Do not commit files under `results/`, `profiles/`, or raw Nsight
-output.
+installation. The JSON output records the git revision, package versions,
+hardware, seed, thread count, and temporary allocator memory so a later run can
+be compared without guessing its environment. Do not commit files under
+`results/`, `profiles/`, or raw Nsight output.
 
 ## Research notes
 

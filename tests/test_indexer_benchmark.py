@@ -48,6 +48,15 @@ def test_validate_config_rejects_top_k_larger_than_history():
         raise AssertionError("invalid configuration was accepted")
 
 
+def test_validate_config_rejects_non_positive_threads():
+    try:
+        validate_config(BenchmarkConfig(threads=0))
+    except ValueError as exc:
+        assert "threads" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("invalid thread count was accepted")
+
+
 def test_small_cpu_run_checks_dense_and_chunked_exactness():
     result = run_benchmark(
         BenchmarkConfig(
@@ -62,5 +71,6 @@ def test_small_cpu_run_checks_dense_and_chunked_exactness():
     )
     assert result["correctness"]["topk_positions_match"] is True
     assert result["correctness"]["max_score_abs_error"] <= 1e-5
+    assert result["correctness"]["chunked"]["passed"] is True
     assert result["paths"]["dense"]["median_ms"] >= 0
     assert result["paths"]["chunked"]["median_ms"] >= 0

@@ -12,8 +12,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
-def command_output(command: list[str]) -> str | None:
+
+def command_output(command: list[str], cwd: Path | None = None) -> str | None:
     executable = shutil.which(command[0])
     if executable is None:
         return None
@@ -23,11 +25,15 @@ def command_output(command: list[str]) -> str | None:
             check=False,
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=10,
+            cwd=cwd,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    output = (result.stdout or result.stderr).strip()
+    if result.returncode != 0:
+        return None
+    output = result.stdout.strip()
     return output or None
 
 
@@ -38,17 +44,16 @@ def package_version(name: str) -> str | None:
         return None
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path)
-    args = parser.parse_args()
-
-    metadata = {
+def collect_environment() -> dict:
+    """Describe this repository and host, independently of the caller's cwd."""
+    status = command_output(["git", "status", "--porcelain"], cwd=REPO_ROOT)
+    return {
         "collected_at_utc": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
         "platform": platform.platform(),
         "machine": platform.machine(),
-        "git": command_output(["git", "rev-parse", "HEAD"]),
+        "git": command_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT),
+        "git_worktree_dirty": bool(status),
         "gpu": command_output(
             [
                 "nvidia-smi",
@@ -69,6 +74,13 @@ def main() -> int:
             )
         },
     }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    metadata = collect_environment()
 
     rendered = json.dumps(metadata, indent=2, sort_keys=True) + "\n"
     if args.output:

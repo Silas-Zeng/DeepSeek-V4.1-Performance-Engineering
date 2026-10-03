@@ -16,10 +16,12 @@ python benchmarks/indexer_benchmark.py \
 ```
 
 Use `--device cuda` on a CUDA host. The output includes the exact configuration,
-Torch version, correctness result, per-path samples, median, p95, and CUDA peak
-allocator memory when available. `results/` is ignored so large or host-specific
-outputs do not enter Git; commit a reduced summary and a research note when a
-run is worth preserving.
+seed, thread count, host/package metadata, correctness result, per-path samples,
+median, p95, and temporary allocator memory when available. Correctness checks
+compare the selected score multiset and accept alternate indices only when dense
+scores are tied, matching PyTorch's Top-K stability contract. `results/` is
+ignored so large or host-specific outputs do not enter Git; commit a reduced
+summary and a research note when a run is worth preserving.
 
 This is component-level evidence only. It does not measure vLLM/SGLang, paged
 address mapping, or end-to-end TTFT/TPOT.

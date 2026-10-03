@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import statistics
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -20,6 +21,10 @@ from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO_ROOT / "results/indexer-benchmark.json"
+if __package__ in (None, ""):
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.collect_environment import collect_environment
 
 
 @dataclass(frozen=True)
@@ -34,6 +39,8 @@ class BenchmarkConfig:
     warmup: int = 2
     repeat: int = 10
     device: str = "cpu"
+    seed: int = 0
+    threads: int = 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,6 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--chunk-size", type=int, default=BenchmarkConfig.chunk_size)
     parser.add_argument("--warmup", type=int, default=BenchmarkConfig.warmup)
     parser.add_argument("--repeat", type=int, default=BenchmarkConfig.repeat)
+    parser.add_argument("--seed", type=int, default=BenchmarkConfig.seed)
+    parser.add_argument("--threads", type=int, default=BenchmarkConfig.threads)
     parser.add_argument(
         "--device",
         default=BenchmarkConfig.device,
@@ -70,6 +79,7 @@ def validate_config(config: BenchmarkConfig) -> None:
         "head_dim": config.head_dim,
         "top_k": config.top_k,
         "chunk_size": config.chunk_size,
+        "threads": config.threads,
     }
     invalid = [name for name, value in positive.items() if value <= 0]
     if invalid:
@@ -78,8 +88,12 @@ def validate_config(config: BenchmarkConfig) -> None:
         raise ValueError("top_k cannot exceed history")
     if config.warmup < 0 or config.repeat <= 0:
         raise ValueError("warmup must be non-negative and repeat must be positive")
+    if config.threads <= 0:
+        raise ValueError("threads must be positive")
     if not config.device:
         raise ValueError("device cannot be empty")
+    if not 0 <= config.seed < 2**63:
+        raise ValueError("seed must be in [0, 2**63)")
 
 
 def dense_indexer(query: Any, keys: Any, top_k: int) -> tuple[Any, Any]:
@@ -92,7 +106,7 @@ def dense_indexer(query: Any, keys: Any, top_k: int) -> tuple[Any, Any]:
 def chunked_indexer(
     query: Any, keys: Any, top_k: int, chunk_size: int
 ) -> tuple[Any, Any]:
-    """Return the exact dense Top-K result while bounding score workspace."""
+    """Stream Top-K while bounding scores; equal scores may choose other indices."""
 
     import torch
 
@@ -104,6 +118,7 @@ def chunked_indexer(
         local_k = min(top_k, chunk_scores.shape[-1])
         local_scores, local_indices = chunk_scores.topk(local_k, dim=-1)
         local_indices = local_indices + start
+        del chunk_scores
 
         if best_scores is None:
             best_scores, best_indices = local_scores, local_indices
@@ -114,6 +129,7 @@ def chunked_indexer(
         keep = min(top_k, merged_scores.shape[-1])
         best_scores, order = merged_scores.topk(keep, dim=-1)
         best_indices = merged_indices.gather(-1, order)
+        del merged_scores, merged_indices, local_scores, local_indices, order
 
     return best_scores, best_indices
 
@@ -121,6 +137,51 @@ def chunked_indexer(
 def _synchronize(device: Any, torch_module: Any) -> None:
     if device.type == "cuda":
         torch_module.cuda.synchronize(device)
+
+
+def check_selection(query: Any, keys: Any, top_k: int, selected: tuple[Any, Any]) -> dict:
+    """Check indices against dense scores, accepting only exact-score tie swaps.
+
+    PyTorch does not promise stable indices for tied Top-K elements. Every index
+    must still be unique, in range, and select the reference Top-K score multiset.
+    Chunked GEMM scores may differ within the documented FP32 tolerance.
+    """
+    import torch
+
+    values, indices = selected
+    expected_shape = (query.shape[0], top_k)
+    if tuple(values.shape) != expected_shape or tuple(indices.shape) != expected_shape:
+        raise RuntimeError("selection has an invalid shape")
+    if indices.dtype != torch.int64:
+        raise RuntimeError("selection indices must use int64")
+    if bool(((indices < 0) | (indices >= keys.shape[0])).any()):
+        raise RuntimeError("selection contains out-of-range indices")
+    ordered_indices = indices.sort(dim=-1).values
+    if bool((ordered_indices[:, 1:] == ordered_indices[:, :-1]).any()):
+        raise RuntimeError("selection contains duplicate indices")
+
+    reference = query @ keys.transpose(0, 1)
+    reference_values, reference_indices = reference.topk(top_k, dim=-1)
+    selected_reference_values = reference.gather(-1, indices)
+    if not bool(torch.isfinite(values).all()):
+        raise RuntimeError("selection contains non-finite scores")
+    if not torch.equal(
+        selected_reference_values.sort(dim=-1).values,
+        reference_values.sort(dim=-1).values,
+    ):
+        raise RuntimeError("selection does not contain the dense Top-K scores")
+    if not torch.allclose(values, selected_reference_values, rtol=1e-5, atol=1e-5):
+        raise RuntimeError("selection scores disagree with the dense reference")
+    return {
+        "passed": True,
+        "topk_positions_match": torch.equal(
+            ordered_indices, reference_indices.sort(dim=-1).values
+        ),
+        "max_score_abs_error": float((values - selected_reference_values).abs().max().item()),
+        "tie_policy": "accept alternate indices only for equal dense reference scores",
+        "score_rtol": 1e-5,
+        "score_atol": 1e-5,
+    }
 
 
 def _timed(
@@ -136,6 +197,7 @@ def _timed(
         _synchronize(device, torch_module)
 
         if device.type == "cuda":
+            baseline_memory = torch_module.cuda.memory_allocated(device)
             torch_module.cuda.reset_peak_memory_stats(device)
 
         samples: list[float] = []
@@ -147,7 +209,7 @@ def _timed(
             samples.append((time.perf_counter() - started) * 1000.0)
 
         peak = (
-            int(torch_module.cuda.max_memory_allocated(device))
+            int(torch_module.cuda.max_memory_allocated(device) - baseline_memory)
             if device.type == "cuda"
             else None
         )
@@ -161,7 +223,7 @@ def _summary(samples: list[float], peak_memory_bytes: int | None) -> dict[str, A
         "samples_ms": [round(value, 6) for value in samples],
         "median_ms": round(statistics.median(samples), 6),
         "p95_ms": round(ordered[p95_index], 6),
-        "peak_memory_bytes": peak_memory_bytes,
+        "peak_temporary_memory_bytes": peak_memory_bytes,
     }
 
 
@@ -183,7 +245,8 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but is not available")
 
-    torch.manual_seed(0)
+    torch.manual_seed(config.seed)
+    torch.set_num_threads(config.threads)
     query = torch.randn(config.query_rows, config.head_dim, device=device)
     keys = torch.randn(config.history, config.head_dim, device=device)
 
@@ -191,21 +254,8 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     chunked_scores, chunked_indices = chunked_indexer(
         query, keys, config.top_k, config.chunk_size
     )
-    same_positions = torch.equal(
-        torch.sort(dense_indices, dim=-1).values,
-        torch.sort(chunked_indices, dim=-1).values,
-    )
-    max_score_error = float(
-        (torch.sort(dense_scores, dim=-1).values - torch.sort(chunked_scores, dim=-1).values)
-        .abs()
-        .max()
-        .item()
-    )
-    if not same_positions or max_score_error > 1e-5:
-        raise RuntimeError(
-            "chunked path disagrees with dense reference: "
-            f"same_positions={same_positions}, max_score_error={max_score_error}"
-        )
+    dense_check = check_selection(query, keys, config.top_k, (dense_scores, dense_indices))
+    chunked_check = check_selection(query, keys, config.top_k, (chunked_scores, chunked_indices))
 
     dense_samples, dense_peak = _timed(
         lambda: dense_indexer(query, keys, config.top_k),
@@ -224,10 +274,13 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     return {
         "benchmark": "synthetic_sparse_indexer",
         "torch_version": torch.__version__,
+        "environment": collect_environment(),
         "config": asdict(config),
         "correctness": {
-            "topk_positions_match": same_positions,
-            "max_score_abs_error": max_score_error,
+            "dense": dense_check,
+            "chunked": chunked_check,
+            "topk_positions_match": chunked_check["topk_positions_match"],
+            "max_score_abs_error": chunked_check["max_score_abs_error"],
         },
         "paths": {
             "dense": _summary(dense_samples, dense_peak),
@@ -235,7 +288,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
         },
         "notes": [
             "Component-level synthetic measurement; not an end-to-end model result.",
-            "CPU peak memory is not reported; CUDA peak memory is allocator-reported.",
+            "Peak memory is temporary allocator memory observed during each timed path.",
         ],
     }
 
@@ -252,6 +305,8 @@ def main() -> int:
         warmup=args.warmup,
         repeat=args.repeat,
         device=args.device,
+        seed=args.seed,
+        threads=args.threads,
     )
     try:
         result = run_benchmark(config)
