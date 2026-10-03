@@ -54,6 +54,7 @@ treated as performance regressions.
 - [`docs/vllm-first-plan.md`](docs/vllm-first-plan.md): first-phase plan and boundaries
 - [`configs/vllm-baseline.yaml`](configs/vllm-baseline.yaml): version and experiment lock
 - [`benchmarks/README.md`](benchmarks/README.md): benchmark entry-point contract
+- [`benchmarks/indexer_benchmark.py`](benchmarks/indexer_benchmark.py): reproducible dense/chunked component baseline
 - [`docs/existing-vllm-work.md`](docs/existing-vllm-work.md): existing vLLM work
   and the remaining research gap
 
@@ -68,6 +69,20 @@ python scripts/tutorial_cpu_profiler.py --output profiles/custom/indexer_cpu_tra
 
 The script writes a Chrome trace to `profiles/cpu-tutorial/indexer_cpu_trace.json` under the repository root by default. It accepts a custom relative or absolute output path and supports tuning the number of profile iterations.
 
+## Runnable baseline
+
+The repository now includes a CPU-safe synthetic baseline that checks dense and
+chunked Top-K exactness before reporting timing. Run it with:
+
+```bash
+python benchmarks/indexer_benchmark.py --output results/indexer-benchmark.json
+```
+
+The result is deliberately scoped to the indexer score and selection stage. A
+GPU result, a real vLLM/SGLang run, and downstream sparse-attention validation
+are still required before making an end-to-end performance claim.
+
 ## Status
 
-Repository scaffold and scope correction created. No performance claim has been made yet.
+The measurement contract and a correctness-checked component baseline are in
+place. No end-to-end performance claim has been made yet.
