@@ -55,6 +55,7 @@ treated as performance regressions.
 - [`configs/vllm-baseline.yaml`](configs/vllm-baseline.yaml): version and experiment lock
 - [`benchmarks/README.md`](benchmarks/README.md): benchmark entry-point contract
 - [`benchmarks/indexer_benchmark.py`](benchmarks/indexer_benchmark.py): reproducible dense/chunked component baseline
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): validation and research-note workflow
 - [`docs/existing-vllm-work.md`](docs/existing-vllm-work.md): existing vLLM work
   and the remaining research gap
 
