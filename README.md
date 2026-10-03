@@ -63,9 +63,10 @@ A small CPU-only trace is included to inspect the indexer pipeline before a CUDA
 
 ```bash
 python scripts/tutorial_cpu_profiler.py
+python scripts/tutorial_cpu_profiler.py --output profiles/custom/indexer_cpu_trace.json --repeat 3
 ```
 
-The script writes a Chrome trace to `profiles/cpu-tutorial/indexer_cpu_trace.json` under the repository root, and it can also accept a custom output path if needed.
+The script writes a Chrome trace to `profiles/cpu-tutorial/indexer_cpu_trace.json` under the repository root by default. It accepts a custom relative or absolute output path and supports tuning the number of profile iterations.
 
 ## Status
 
