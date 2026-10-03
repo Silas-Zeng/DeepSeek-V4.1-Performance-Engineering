@@ -57,6 +57,16 @@ treated as performance regressions.
 - [`docs/existing-vllm-work.md`](docs/existing-vllm-work.md): existing vLLM work
   and the remaining research gap
 
+## Quick CPU profiler
+
+A small CPU-only trace is included to inspect the indexer pipeline before a CUDA host is available:
+
+```bash
+python scripts/tutorial_cpu_profiler.py
+```
+
+The script writes a Chrome trace to `profiles/cpu-tutorial/indexer_cpu_trace.json` under the repository root, and it can also accept a custom output path if needed.
+
 ## Status
 
 Repository scaffold and scope correction created. No performance claim has been made yet.
