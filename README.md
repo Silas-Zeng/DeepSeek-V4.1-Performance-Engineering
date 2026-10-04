@@ -87,3 +87,15 @@ are still required before making an end-to-end performance claim.
 
 The measurement contract and a correctness-checked component baseline are in
 place. No end-to-end performance claim has been made yet.
+
+
+## Reproducibility checklist (2026-10-04)
+
+Before comparing an indexer change, record:
+
+- framework commit, model/config, precision, tensor/pipeline parallelism, and GPU model;
+- prompt/context length, batch or concurrency, warmup count, and measured repeat count;
+- indexer/top-k timings, workspace allocation, candidate gathering, remapping, and downstream attention;
+- exact selected positions and output checksums before interpreting a speedup.
+
+A result is ready for an end-to-end claim only when component correctness, selection equivalence, and downstream sparse-attention behavior all pass on the same workload matrix.
